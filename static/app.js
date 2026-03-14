@@ -141,6 +141,18 @@ async function printFile(name, btn) {
 
   if (btn) { btn.disabled = true; btn.textContent = 'SENDING…'; }
 
+  // Show indeterminate print progress bar in the parent list item
+  let progressEl = null;
+  if (btn) {
+    const li = btn.closest('li');
+    if (li) {
+      progressEl = document.createElement('div');
+      progressEl.className = 'print-progress-wrap';
+      progressEl.innerHTML = '<div class="print-progress-bar"></div>';
+      li.appendChild(progressEl);
+    }
+  }
+
   try {
     const res = await fetch(`/print/${encodeURIComponent(name)}`, {
       method: 'POST',
@@ -154,6 +166,7 @@ async function printFile(name, btn) {
     showToast('NETWORK ERROR — PRINT JOB FAILED', 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '▶ PRINT'; }
+    if (progressEl) progressEl.remove();
   }
 }
 
