@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrintSRV // Pi Print Server</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ── Sidebar ── -->
+    <nav id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-mark">&#9654;</div>
+        <div class="logo-text">PRINT<span class="logo-accent">SRV</span></div>
+        <div class="logo-sub">v1.0 // RPI-1</div>
+      </div>
+
+      <ul class="nav-links">
+        <li class="nav-item active" data-target="upload-section">
+          <span class="nav-icon">&#8679;</span>
+          <span class="nav-label">UPLOAD</span>
+        </li>
+        <li class="nav-item" data-target="printer-section">
+          <span class="nav-icon">&#9643;</span>
+          <span class="nav-label">PRINTER</span>
+        </li>
+        <li class="nav-item" data-target="files-section">
+          <span class="nav-icon">&#8801;</span>
+          <span class="nav-label">QUEUE</span>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="sys-row">
+          <span class="sys-label">SYS</span>
+          <span class="led led-green" id="sys-led"></span>
+          <span class="sys-val">ONLINE</span>
+        </div>
+        <div class="sys-row">
+          <span class="sys-label">TIME</span>
+          <span class="sys-val mono" id="sys-clock">--:--:--</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ── Content ── -->
+    <div id="content">
+
+      <header id="topbar">
+        <div class="topbar-left">
+          <span class="topbar-path">ROOT</span>
+          <span class="topbar-sep">/</span>
+          <span class="topbar-path">PRINT-MGMT</span>
+          <span class="topbar-sep">/</span>
+          <span class="topbar-path active" id="topbar-section">UPLOAD</span>
+        </div>
+        <div class="topbar-right">
+          <span class="topbar-tag">USB</span>
+          <span class="topbar-tag">WIFI</span>
+          <span class="topbar-tag">CUPS</span>
+        </div>
+      </header>
+
+      <main>
+
+        <!-- Upload Panel -->
+        <section class="panel" id="upload-section">
+          <div class="panel-header">
+            <span class="panel-title">&#8679; FILE UPLOAD</span>
+            <span class="panel-badge">DRAG &amp; DROP ENABLED</span>
+          </div>
+          <div class="panel-body">
+            <div id="drop-area">
+              <div class="drop-icon">&#8679;</div>
+              <p class="drop-text">DROP FILES HERE</p>
+              <p class="drop-or">&#9472;&#9472;&#9472;&nbsp; OR &nbsp;&#9472;&#9472;&#9472;</p>
+              <label for="file-input" class="btn">&#128193; BROWSE FILES</label>
+              <input type="file" id="file-input" multiple
+                     accept=".pdf,.jpg,.jpeg,.png,.txt" hidden>
+              <p class="drop-types">[ PDF &nbsp;&#183;&nbsp; JPG &nbsp;&#183;&nbsp; PNG &nbsp;&#183;&nbsp; TXT ] &nbsp;&#9646;&nbsp; MAX 50 MB</p>
+            </div>
+            <div id="upload-progress"></div>
+          </div>
+        </section>
+
+        <!-- Printer Panel -->
+        <section class="panel" id="printer-section">
+          <div class="panel-header">
+            <span class="panel-title">&#9643; PRINTER DEVICE</span>
+            <span class="led" id="printer-led" title="No printer selected"></span>
+          </div>
+          <div class="panel-body">
+            <div class="field-row">
+              <label class="field-label">TARGET</label>
+              <select id="printer-dropdown">
+                <option value="">-- USE DEFAULT PRINTER --</option>
+              </select>
+              <button id="refresh-printers" class="btn-ghost">&#8635; SCAN</button>
+            </div>
+            <p id="printer-status" class="status-line"></p>
+          </div>
+        </section>
+
+        <!-- Queue Panel -->
+        <section class="panel" id="files-section">
+          <div class="panel-header">
+            <span class="panel-title">&#8801; PRINT QUEUE</span>
+            <span class="panel-badge" id="file-count">0 FILES</span>
+          </div>
+          <div class="panel-body">
+            <div class="table-head">
+              <span class="col-type">TYPE</span>
+              <span class="col-name">FILENAME</span>
+              <span class="col-size">SIZE</span>
+              <span class="col-actions">ACTIONS</span>
+            </div>
+            <ul id="file-list">
+              <li class="empty-msg">[ QUEUE EMPTY ]</li>
+            </ul>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <div id="toast" role="alert" aria-live="assertive"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

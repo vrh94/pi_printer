@@ -1,0 +1,23 @@
+[Unit]
+Description=Pi Print Server
+After=network.target cups.service
+Requires=cups.service
+
+[Service]
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/pi_printer
+ExecStart=/home/pi/pi_printer/venv/bin/gunicorn \
+    --workers 1 \
+    --bind 0.0.0.0:5000 \
+    --timeout 60 \
+    --access-logfile /var/log/pi-printer/access.log \
+    --error-logfile /var/log/pi-printer/error.log \
+    app:app
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
