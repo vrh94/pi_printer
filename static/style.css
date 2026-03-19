@@ -415,6 +415,26 @@ main {
   box-shadow: 0 0 8px var(--orange-glow);
 }
 
+.btn-danger {
+  background: transparent;
+  color: #ff3b3b;
+  border: 1px solid #ff3b3b;
+  border-radius: var(--radius);
+  padding: 0.35rem 0.85rem;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-danger:hover {
+  background: rgba(255, 59, 59, 0.12);
+  box-shadow: 0 0 8px rgba(255, 59, 59, 0.4);
+}
+.btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .btn-print {
   background: transparent;
   color: var(--orange);

@@ -284,3 +284,18 @@ loadPrinters();
 loadFiles();
 
 document.getElementById('refresh-printers').addEventListener('click', loadPrinters);
+
+document.getElementById('kill-jobs').addEventListener('click', async () => {
+  const btn = document.getElementById('kill-jobs');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/jobs/cancel', { method: 'POST' });
+    const data = await res.json();
+    showToast(data.message, data.success ? 'ok' : 'error');
+    if (data.success) loadFiles();
+  } catch {
+    showToast('NETWORK ERROR — KILL FAILED', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});

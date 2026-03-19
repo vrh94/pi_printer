@@ -132,6 +132,20 @@ def printers():
     return jsonify(list_printers())
 
 
+@app.route('/jobs/cancel', methods=['POST'])
+def cancel_jobs():
+    import subprocess
+    try:
+        result = subprocess.run(['cancel', '-a'], capture_output=True, text=True, timeout=10)
+        if result.returncode == 0 or 'no jobs' in (result.stderr or '').lower():
+            return jsonify({'success': True, 'message': 'All print jobs cancelled'})
+        return jsonify({'success': False, 'message': result.stderr.strip() or 'cancel failed'}), 500
+    except FileNotFoundError:
+        return jsonify({'success': False, 'message': 'cancel command not found (CUPS not installed)'}), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({'success': False, 'message': 'cancel timed out'}), 500
+
+
 # ---------------------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------------------
