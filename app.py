@@ -138,7 +138,7 @@ def printers():
 
 @app.errorhandler(413)
 def too_large(e):
-    return jsonify({'error': 'File too large. Maximum is 50 MB.'}), 413
+    return jsonify({'error': 'File too large. Maximum is 300 MB.'}), 413
 
 
 @app.errorhandler(400)
