@@ -1,6 +1,7 @@
 import os
 import uuid
 import logging
+import subprocess
 
 from flask import Flask, request, jsonify, render_template, abort
 from werkzeug.utils import secure_filename
@@ -132,9 +133,73 @@ def printers():
     return jsonify(list_printers())
 
 
+@app.route('/status/printer')
+def status_printer():
+    data = {'state': 'unknown', 'state_msg': '', 'details': [], 'jobs': []}
+    try:
+        r = subprocess.run(['lpstat', '-l', '-p'], capture_output=True, text=True, timeout=5)
+        lines = r.stdout.splitlines()
+        for line in lines:
+            if 'XeroxPhaser3020' in line:
+                if ' is idle' in line:
+                    data['state'] = 'idle'
+                elif 'processing' in line.lower():
+                    data['state'] = 'processing'
+                elif 'disabled' in line or 'stopped' in line.lower():
+                    data['state'] = 'error'
+                else:
+                    data['state'] = 'unknown'
+                data['state_msg'] = line.strip()
+            elif line.startswith('\t') and line.strip():
+                data['details'].append(line.strip())
+    except Exception as e:
+        data['details'].append(str(e))
+
+    try:
+        r = subprocess.run(['lpq', '-P', 'XeroxPhaser3020'], capture_output=True, text=True, timeout=5)
+        data['jobs'] = [
+            l for l in r.stdout.splitlines()
+            if l.strip() and 'no entries' not in l.lower() and 'ready' not in l.lower()
+        ]
+    except Exception:
+        pass
+
+    return jsonify(data)
+
+
+@app.route('/status/logs')
+def status_logs():
+    entries = []
+
+    def _journal(unit, src, n=40):
+        try:
+            r = subprocess.run(
+                ['journalctl', '-u', unit, f'-n{n}', '--no-pager', '--output=short'],
+                capture_output=True, text=True, timeout=5,
+            )
+            for line in r.stdout.splitlines():
+                if line and not line.startswith('--'):
+                    entries.append({'src': src, 'line': line})
+        except Exception:
+            pass
+
+    _journal('pi-printer', 'APP', 40)
+    _journal('cups', 'CUPS', 40)
+
+    # Sort by the timestamp prefix (first two tokens: "Mar 19 20:30:20")
+    try:
+        entries.sort(key=lambda e: ' '.join(e['line'].split()[:3]))
+    except Exception:
+        pass
+
+    # Filter out noisy CUPS PPD warning spam
+    entries = [e for e in entries if 'Bad driver' not in e['line'] and 'openprinting' not in e['line']]
+
+    return jsonify(entries[-80:])
+
+
 @app.route('/jobs/cancel', methods=['POST'])
 def cancel_jobs():
-    import subprocess
     try:
         result = subprocess.run(['cancel', '-a'], capture_output=True, text=True, timeout=10)
         if result.returncode == 0 or 'no jobs' in (result.stderr or '').lower():

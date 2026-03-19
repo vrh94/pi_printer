@@ -276,10 +276,117 @@ function initDragDrop() {
   });
 }
 
+// ── System status & console ────────────────────────────────────────────────
+
+let consoleFilter = 'ALL';
+let consoleAutoScroll = true;
+let consoleClearTs = 0;
+
+function levelClass(line) {
+  if (/\bE \[|\bERROR\b|error|Error/.test(line)) return 'log-error';
+  if (/\bW \[|\bWARN\b|warn|Warning/.test(line))  return 'log-warn';
+  if (/\bI \[|\bINFO\b/.test(line))               return 'log-info';
+  if (/\bD \[|\bDEBUG\b/.test(line))              return 'log-debug';
+  return '';
+}
+
+async function pollPrinterStatus() {
+  try {
+    const res  = await fetch('/status/printer');
+    const data = await res.json();
+
+    const badge  = document.getElementById('printer-state-badge');
+    const msgEl  = document.getElementById('printer-state-msg');
+    const detEl  = document.getElementById('printer-detail-list');
+    const jobEl  = document.getElementById('printer-job-list');
+    const led    = document.getElementById('system-led');
+
+    const stateMap = {
+      idle:       ['IDLE',       'led-green',  'badge-idle'],
+      processing: ['PROCESSING', 'led-orange led-blink', 'badge-processing'],
+      error:      ['ERROR',      'led-red',    'badge-error'],
+      unknown:    ['UNKNOWN',    '',           ''],
+    };
+    const [label, ledCls, badgeCls] = stateMap[data.state] || stateMap.unknown;
+
+    badge.textContent = label;
+    badge.className   = 'sys-state-badge ' + badgeCls;
+    if (led) led.className = 'led ' + ledCls;
+    if (msgEl) msgEl.textContent = data.state_msg || '';
+
+    detEl.innerHTML = data.details.length
+      ? data.details.map(d => `<li class="${/unable|error/i.test(d) ? 'log-error' : 'dim'}">${d}</li>`).join('')
+      : '<li class="dim">[ NO ERRORS ]</li>';
+
+    jobEl.innerHTML = data.jobs.length
+      ? data.jobs.map(j => `<li class="dim">${j}</li>`).join('')
+      : '<li class="dim">[ EMPTY ]</li>';
+
+  } catch { /* network error — leave stale */ }
+}
+
+async function pollLogs() {
+  try {
+    const res     = await fetch('/status/logs');
+    const entries = await res.json();
+    const out     = document.getElementById('console-output');
+    if (!out) return;
+
+    const filtered = entries.filter(e => {
+      if (consoleClearTs && e._ts < consoleClearTs) return false;
+      return consoleFilter === 'ALL' || e.src === consoleFilter;
+    });
+
+    out.innerHTML = filtered.map(e =>
+      `<div class="log-line ${levelClass(e.line)}"><span class="log-src">${e.src}</span>${escHtml(e.line)}</div>`
+    ).join('');
+
+    if (consoleAutoScroll) out.scrollTop = out.scrollHeight;
+  } catch { /* ignore */ }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function initSystemPanel() {
+  // Filter toggles
+  document.querySelectorAll('.filter-toggle[data-src]').forEach(lbl => {
+    lbl.addEventListener('click', () => {
+      document.querySelectorAll('.filter-toggle[data-src]').forEach(l => l.classList.remove('active'));
+      lbl.classList.add('active');
+      consoleFilter = lbl.dataset.src;
+      pollLogs();
+    });
+  });
+
+  // Auto-scroll toggle
+  const asToggle = document.getElementById('autoscroll-toggle');
+  if (asToggle) {
+    asToggle.classList.add('active');
+    asToggle.addEventListener('click', () => {
+      consoleAutoScroll = !consoleAutoScroll;
+      asToggle.classList.toggle('active', consoleAutoScroll);
+    });
+  }
+
+  // Clear button
+  document.getElementById('console-clear')?.addEventListener('click', () => {
+    const out = document.getElementById('console-output');
+    if (out) out.innerHTML = '';
+  });
+
+  pollPrinterStatus();
+  pollLogs();
+  setInterval(pollPrinterStatus, 5000);
+  setInterval(pollLogs, 3000);
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────
 
 initSidebarNav();
 initDragDrop();
+initSystemPanel();
 loadPrinters();
 loadFiles();
 

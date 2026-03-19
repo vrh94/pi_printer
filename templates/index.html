@@ -33,6 +33,10 @@
           <span class="nav-icon">&#8801;</span>
           <span class="nav-label">QUEUE</span>
         </li>
+        <li class="nav-item" data-target="system-section">
+          <span class="nav-icon">&#9632;</span>
+          <span class="nav-label">SYSTEM</span>
+        </li>
       </ul>
 
       <div class="sidebar-footer">
@@ -132,6 +136,46 @@
             <ul id="file-list">
               <li class="empty-msg">[ QUEUE EMPTY ]</li>
             </ul>
+          </div>
+        </section>
+
+        <!-- System Panel -->
+        <section class="panel" id="system-section">
+          <div class="panel-header">
+            <span class="panel-title">&#9632; SYSTEM STATUS</span>
+            <span class="led" id="system-led" title=""></span>
+          </div>
+          <div class="panel-body">
+
+            <!-- Printer status -->
+            <div class="sys-status-block">
+              <div class="sys-status-header">
+                <span class="sys-status-label">PRINTER</span>
+                <span class="sys-state-badge" id="printer-state-badge">--</span>
+              </div>
+              <p class="sys-status-msg" id="printer-state-msg"></p>
+              <ul class="sys-detail-list" id="printer-detail-list"></ul>
+              <div class="sys-status-header" style="margin-top:0.7rem">
+                <span class="sys-status-label">QUEUE</span>
+              </div>
+              <ul class="sys-detail-list" id="printer-job-list"><li class="dim">[ EMPTY ]</li></ul>
+            </div>
+
+            <!-- Console -->
+            <div class="console-block">
+              <div class="console-toolbar">
+                <span class="sys-status-label">CONSOLE</span>
+                <div class="console-filters">
+                  <label class="filter-toggle active" data-src="ALL"><input type="checkbox" checked hidden>ALL</label>
+                  <label class="filter-toggle" data-src="APP"><input type="checkbox" hidden>APP</label>
+                  <label class="filter-toggle" data-src="CUPS"><input type="checkbox" hidden>CUPS</label>
+                </div>
+                <label class="filter-toggle" id="autoscroll-toggle" title="Auto-scroll">&#8595; AUTO</label>
+                <button class="btn-ghost console-clear-btn" id="console-clear">CLR</button>
+              </div>
+              <div id="console-output"></div>
+            </div>
+
           </div>
         </section>
 
