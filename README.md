@@ -1,6 +1,6 @@
 # Pi Print Server
 
-A lightweight web print server for Raspberry Pi 1. Upload files from any browser on your local network and print them to a USB-connected printer.
+A lightweight web print server for Raspberry Pi. Upload files from any browser on your local network and print them to a USB-connected printer.
 
 **Supported file types:** PDF, JPG, PNG, TXT (max 50 MB)
 
@@ -8,10 +8,22 @@ A lightweight web print server for Raspberry Pi 1. Upload files from any browser
 
 ## Hardware requirements
 
-- Raspberry Pi 1 Model B or B+ (ARMv6, 256–512 MB RAM)
-- Raspbian / Raspberry Pi OS Lite (32-bit, Bullseye or later)
+- Raspberry Pi 1 Model B or B+ (ARMv6, 256–512 MB RAM) or newer (Pi 4 recommended for faster image conversion)
+- Raspberry Pi OS Lite (32-bit, Bullseye or later)
 - USB printer
 - WiFi adapter (or Ethernet) — static IP recommended
+
+---
+
+## Quick install
+
+```bash
+git clone <your-repo-url> /opt/pi_printer
+cd /opt/pi_printer
+sudo bash install.sh
+```
+
+The script handles static IP, CUPS, Python venv, and the systemd service automatically.
 
 ---
 
@@ -36,15 +48,15 @@ sudo systemctl restart dhcpcd
 
 ---
 
-## 2. Install CUPS
+## 2. Install CUPS and drivers
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y cups cups-bsd
+sudo apt-get install -y cups cups-bsd printer-driver-splix printer-driver-foo2zjs img2pdf
 
-# Allow the 'pi' user to manage printers
-sudo usermod -aG lp pi
-sudo usermod -aG lpadmin pi
+# Allow your user to manage printers (replace 'admin' with your username)
+sudo usermod -aG lp admin
+sudo usermod -aG lpadmin admin
 
 # Allow CUPS admin access from the local network
 sudo cupsctl --remote-any
@@ -55,9 +67,25 @@ sudo systemctl start cups
 
 Add your printer via the CUPS web interface:
 ```
-http://192.168.1.100:631
+http://<pi-ip>:631
 ```
 Go to **Administration → Add Printer** and follow the wizard.
+
+### Xerox Phaser 3020 (and similar Samsung-based printers)
+
+The Phaser 3020 is not in the CUPS driver list. Use the Samsung ML-2160 driver:
+
+```bash
+lpadmin -p XeroxPhaser3020 -E \
+  -v "usb://Xerox/Phaser%203020?serial=<your-serial>" \
+  -m drv:///splix-samsung.drv/ml2160.ppd
+lpoptions -d XeroxPhaser3020
+```
+
+Find your serial with:
+```bash
+lpinfo -v | grep -i xerox
+```
 
 After adding, verify with:
 ```bash
@@ -69,11 +97,9 @@ lpstat -p
 ## 3. Install the app
 
 ```bash
-# Copy the project to the Pi (e.g. via scp or git)
-git clone <your-repo-url> /home/pi/pi_printer
-cd /home/pi/pi_printer
+git clone <your-repo-url> /opt/pi_printer
+cd /opt/pi_printer
 
-# Create a virtual environment and install dependencies
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -84,23 +110,22 @@ pip install -r requirements.txt
 ## 4. Run manually (for testing)
 
 ```bash
-cd /home/pi/pi_printer
-source venv/bin/activate
-python app.py
+cd /opt/pi_printer
+sudo python app.py
 ```
 
-Open `http://192.168.1.100:5000` in a browser.
+Open `http://<pi-ip>:1200` in a browser.
+
+> Run with `sudo` so CUPS can access the USB printer device.
 
 ---
 
 ## 5. Run as a systemd service (auto-start on boot)
 
 ```bash
-# Create log directory
 sudo mkdir -p /var/log/pi-printer
-sudo chown pi:pi /var/log/pi-printer
+sudo chown admin:admin /var/log/pi-printer
 
-# Install and enable the service
 sudo cp systemd/pi-printer.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable pi-printer
@@ -112,6 +137,8 @@ Check status:
 sudo systemctl status pi-printer
 journalctl -u pi-printer -f   # follow logs
 ```
+
+> Make sure `User=` and `Group=` in the service file match your username (default: `admin`), and that `WorkingDirectory=` and `ExecStart=` point to `/opt/pi_printer`.
 
 ---
 
@@ -132,28 +159,45 @@ Edit `config.py` to change defaults:
 ## 7. Troubleshooting
 
 **`lpstat -p` returns nothing**
-The printer has not been added in CUPS yet. Go to `http://<ip>:631`.
+The printer has not been added in CUPS yet. Go to `http://<pi-ip>:631`.
+
+**Printer prints an "Exception Report" page instead of the file**
+The driver is receiving a format it can't process. Make sure `img2pdf` is installed (`sudo apt install img2pdf`) — the app uses it to convert JPG/PNG to PDF before printing.
+
+**`Backend usb returned status 1 (failed)`**
+USB communication failed. Try:
+```bash
+sudo rmmod usblp && sudo modprobe usblp
+sudo systemctl restart cups
+```
+If it persists, power cycle the printer.
+
+**Permission denied on `/opt/pi_printer/uploads`**
+```bash
+sudo chown -R admin:admin /opt/pi_printer/uploads
+```
 
 **Permission denied on `/dev/usb/lp0`**
 ```bash
-sudo usermod -aG lp pi
+sudo usermod -aG lp admin
 # Then log out and back in, or reboot
 ```
-Or add a udev rule:
-```bash
-echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="XXXX", MODE="0666"' \
-  | sudo tee /etc/udev/rules.d/99-printer.rules
-sudo udevadm control --reload
-```
 
-**Out of memory / service crashes**
+**Service fails with `status=217/USER`**
+The user in the service file doesn't exist. Edit `/etc/systemd/system/pi-printer.service` and set `User=` and `Group=` to your actual username, then:
 ```bash
-free -m      # check available RAM
-# gunicorn with --workers 1 uses ~40–60 MB; make sure no other heavy processes are running
+sudo systemctl daemon-reload && sudo systemctl restart pi-printer
 ```
 
 **Service fails to start: `cups.service` not found**
-Make sure CUPS is installed and running (`sudo systemctl status cups`). The service unit lists `Requires=cups.service` — remove that line from `systemd/pi-printer.service` if you want to start without CUPS (raw USB mode only).
+Make sure CUPS is installed and running (`sudo systemctl status cups`).
 
-**PDF prints as garbage (raw mode)**
-Raw `/dev/usb/lp0` mode only works for plain text. PDFs require CUPS to rasterize them. Install CUPS and add the printer.
+**Migrating to a new Pi**
+```bash
+# Copy project from old Pi
+scp -r /opt/pi_printer admin@<new-pi-ip>:/opt/pi_printer
+
+# On new Pi — re-run install and re-add the printer
+cd /opt/pi_printer
+sudo bash install.sh
+```

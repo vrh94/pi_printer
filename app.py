@@ -99,8 +99,10 @@ def print_route(filename):
 
     body = request.get_json(silent=True) or {}
     printer_name = body.get('printer') or None
+    page_from = body.get('page_from') or None
+    page_to = body.get('page_to') or None
 
-    success, message = do_print(filepath, printer_name)
+    success, message = do_print(filepath, printer_name, page_from, page_to)
     logger.info('Print %s -> success=%s msg=%s', filename, success, message)
 
     if success and AUTO_DELETE_AFTER_PRINT:

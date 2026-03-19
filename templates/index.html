@@ -102,6 +102,13 @@
               </select>
               <button id="refresh-printers" class="btn-ghost">&#8635; SCAN</button>
             </div>
+            <div class="field-row">
+              <label class="field-label">PAGES</label>
+              <input type="number" id="page-from" class="page-input" min="1" placeholder="FROM">
+              <span class="page-sep">&#9472;</span>
+              <input type="number" id="page-to" class="page-input" min="1" placeholder="TO">
+              <span class="field-hint">LEAVE BLANK FOR ALL PAGES</span>
+            </div>
             <p id="printer-status" class="status-line"></p>
           </div>
         </section>

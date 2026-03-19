@@ -489,6 +489,34 @@ select {
 }
 select:focus { border-color: var(--orange); }
 
+.page-input {
+  width: 5rem;
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius);
+  padding: 0.38rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  outline: none;
+  transition: border-color 0.15s;
+  -moz-appearance: textfield;
+}
+.page-input::-webkit-inner-spin-button,
+.page-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.page-input:focus { border-color: var(--orange); }
+.page-sep {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+.field-hint {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
 .status-line {
   font-family: var(--font-mono);
   font-size: 0.68rem;

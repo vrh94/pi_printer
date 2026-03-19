@@ -1,6 +1,7 @@
 import subprocess
 import os
 import logging
+import tempfile
 
 from config import DEFAULT_PRINTER, LPR_TIMEOUT
 
@@ -64,12 +65,17 @@ def list_printers():
     return printers
 
 
-def print_file(filepath, printer_name=None):
+_IMAGE_TYPES = ('png', 'jpeg')
+
+
+def print_file(filepath, printer_name=None, page_from=None, page_to=None):
     """
     Send filepath to the printer.
 
-    Tries lpr first (requires CUPS).
-    Falls back to writing raw bytes to /dev/usb/lp0 if lpr is unavailable.
+    Images (PNG/JPEG) are converted to PDF via img2pdf before printing
+    so the splix/foo2 driver receives a format it can process.
+
+    page_from / page_to: optional 1-based integers for a page range (PDF only).
 
     Returns (success: bool, message: str).
     """
@@ -77,8 +83,12 @@ def print_file(filepath, printer_name=None):
         return False, 'File not found'
 
     target_printer = printer_name or DEFAULT_PRINTER
+    ftype = _detect_type(filepath)
 
-    success, message = _lpr_print(filepath, target_printer)
+    if ftype in _IMAGE_TYPES:
+        return _print_image(filepath, target_printer)
+
+    success, message = _lpr_print(filepath, target_printer, page_from, page_to)
     if success:
         return True, message
 
@@ -86,7 +96,6 @@ def print_file(filepath, printer_name=None):
     # returned an error — an lpr error likely means a real printer problem).
     if 'not installed' in message:
         logger.warning('lpr not available, attempting raw /dev/usb/lp0 fallback')
-        ftype = _detect_type(filepath)
         if ftype not in ('text',):
             return False, (
                 'lpr not installed and raw USB mode only supports plain text. '
@@ -97,10 +106,41 @@ def print_file(filepath, printer_name=None):
     return False, message
 
 
-def _lpr_print(filepath, printer_name=None):
+def _print_image(filepath, printer_name=None):
+    """Convert image to PDF via img2pdf, then send to lpr."""
+    with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+        tmp_path = tmp.name
+
+    try:
+        result = subprocess.run(
+            ['img2pdf', filepath, '-o', tmp_path],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            err = result.stderr.strip() or 'img2pdf conversion failed'
+            return False, f'Image conversion failed: {err}'
+
+        logger.info('Converted %s to PDF for printing', filepath)
+        return _lpr_print(tmp_path, printer_name, None, None)
+    except FileNotFoundError:
+        return False, 'img2pdf not installed — run: sudo apt install img2pdf'
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+def _lpr_print(filepath, printer_name=None, page_from=None, page_to=None):
     cmd = ['lpr']
     if printer_name:
         cmd += ['-P', printer_name]
+    if page_from or page_to:
+        start = int(page_from) if page_from else 1
+        end = int(page_to) if page_to else 9999
+        cmd += ['-o', f'page-ranges={start}-{end}']
     cmd.append(filepath)
 
     try:

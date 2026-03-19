@@ -137,7 +137,9 @@ async function loadFiles() {
 // ── Print ──────────────────────────────────────────────────────────────────
 
 async function printFile(name, btn) {
-  const printer = document.getElementById('printer-dropdown').value;
+  const printer  = document.getElementById('printer-dropdown').value;
+  const pageFrom = parseInt(document.getElementById('page-from').value, 10) || null;
+  const pageTo   = parseInt(document.getElementById('page-to').value, 10)   || null;
 
   if (btn) { btn.disabled = true; btn.textContent = 'SENDING…'; }
 
@@ -157,7 +159,7 @@ async function printFile(name, btn) {
     const res = await fetch(`/print/${encodeURIComponent(name)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ printer: printer || null }),
+      body: JSON.stringify({ printer: printer || null, page_from: pageFrom, page_to: pageTo }),
     });
     const data = await res.json();
     showToast(data.message, data.success ? 'ok' : 'error');
